@@ -129,70 +129,91 @@ st.markdown("""
 class TechnicalIndicators:
     def calculate_rsi(self, data, period=14):
         """Calculate RSI with buy/sell signals"""
-        delta = data['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
-        rsi = 100 - (100 / (1 + rs))
-        
-        # Generate signals
-        signals = []
-        for val in rsi:
-            if pd.isna(val):
-                signals.append('HOLD')
-            elif val < 30:
-                signals.append('BUY')
-            elif val > 70:
-                signals.append('SELL')
-            else:
-                signals.append('HOLD')
-        
-        return {
-            'RSI': rsi,
-            'Signal': signals,
-            'Current': rsi.iloc[-1] if len(rsi) > 0 else 50
-        }
+        try:
+            delta = data['Close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs))
+            
+            # Generate signals
+            signals = []
+            for val in rsi:
+                if pd.isna(val):
+                    signals.append('HOLD')
+                elif val < 30:
+                    signals.append('BUY')
+                elif val > 70:
+                    signals.append('SELL')
+                else:
+                    signals.append('HOLD')
+            
+            # Ensure current value is numeric
+            current_rsi = rsi.iloc[-1] if len(rsi) > 0 else 50
+            if pd.isna(current_rsi):
+                current_rsi = 50
+            
+            return {
+                'RSI': rsi,
+                'Signal': signals,
+                'Current': float(current_rsi)
+            }
+        except Exception as e:
+            # Return safe defaults if calculation fails
+            return {
+                'RSI': pd.Series([50]),
+                'Signal': ['HOLD'],
+                'Current': 50.0
+            }
     
     def calculate_supertrend(self, data, period=10, multiplier=3.0):
         """Calculate Supertrend indicator"""
-        high, low, close = data['High'], data['Low'], data['Close']
-        
-        # True Range
-        tr1 = high - low
-        tr2 = abs(high - close.shift())
-        tr3 = abs(low - close.shift())
-        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-        atr = tr.rolling(period).mean()
-        
-        # Basic bands
-        hl2 = (high + low) / 2
-        upper_band = hl2 + (multiplier * atr)
-        lower_band = hl2 - (multiplier * atr)
-        
-        # Supertrend calculation
-        supertrend = pd.Series(index=data.index, dtype=float)
-        direction = pd.Series(index=data.index, dtype=str)
-        
-        for i in range(len(data)):
-            if i == 0:
-                supertrend.iloc[i] = upper_band.iloc[i]
-                direction.iloc[i] = 'SELL'
-            else:
-                if close.iloc[i] <= lower_band.iloc[i]:
+        try:
+            high, low, close = data['High'], data['Low'], data['Close']
+            
+            # True Range
+            tr1 = high - low
+            tr2 = abs(high - close.shift())
+            tr3 = abs(low - close.shift())
+            tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+            atr = tr.rolling(period).mean()
+            
+            # Basic bands
+            hl2 = (high + low) / 2
+            upper_band = hl2 + (multiplier * atr)
+            lower_band = hl2 - (multiplier * atr)
+            
+            # Supertrend calculation
+            supertrend = pd.Series(index=data.index, dtype=float)
+            direction = pd.Series(index=data.index, dtype=str)
+            
+            for i in range(len(data)):
+                if i == 0:
                     supertrend.iloc[i] = upper_band.iloc[i]
                     direction.iloc[i] = 'SELL'
-                elif close.iloc[i] >= upper_band.iloc[i]:
-                    supertrend.iloc[i] = lower_band.iloc[i]
-                    direction.iloc[i] = 'BUY'
                 else:
-                    supertrend.iloc[i] = supertrend.iloc[i-1]
-                    direction.iloc[i] = direction.iloc[i-1]
-        
-        return {
-            'Supertrend': supertrend,
-            'Signal': direction,
-            'Current': direction.iloc[-1] if len(direction) > 0 else 'HOLD'
-        }
+                    if close.iloc[i] <= lower_band.iloc[i]:
+                        supertrend.iloc[i] = upper_band.iloc[i]
+                        direction.iloc[i] = 'SELL'
+                    elif close.iloc[i] >= upper_band.iloc[i]:
+                        supertrend.iloc[i] = lower_band.iloc[i]
+                        direction.iloc[i] = 'BUY'
+                    else:
+                        supertrend.iloc[i] = supertrend.iloc[i-1]
+                        direction.iloc[i] = direction.iloc[i-1]
+            
+            return {
+                'Supertrend': supertrend,
+                'Signal': direction,
+                'Current': str(direction.iloc[-1]) if len(direction) > 0 else 'HOLD'
+            }
+        except Exception as e:
+            # Return safe defaults if calculation fails
+            return {
+                'Supertrend': pd.Series([0]),
+                'Signal': ['HOLD'],
+                'Current': 'HOLD'
+            }
     
     def calculate_macd(self, data, fast=12, slow=26, signal=9):
         """Calculate MACD with signals"""
@@ -361,16 +382,23 @@ def analyze_combined_signals(indicators):
     signals = []
     signal_strength = 0
     
-    # RSI Signal
+    # RSI Signal with proper type checking
     if 'rsi' in indicators:
-        rsi_signal = indicators['rsi']['Current']
-        if rsi_signal < 30:
-            signals.append(('RSI', 'BUY', 'Strong'))
-            signal_strength += 1
-        elif rsi_signal > 70:
-            signals.append(('RSI', 'SELL', 'Strong'))
-            signal_strength -= 1
-        else:
+        try:
+            rsi_signal = indicators['rsi']['Current']
+            # Ensure it's a numeric value
+            if isinstance(rsi_signal, (int, float)) and not pd.isna(rsi_signal):
+                if rsi_signal < 30:
+                    signals.append(('RSI', 'BUY', 'Strong'))
+                    signal_strength += 1
+                elif rsi_signal > 70:
+                    signals.append(('RSI', 'SELL', 'Strong'))
+                    signal_strength -= 1
+                else:
+                    signals.append(('RSI', 'NEUTRAL', 'Weak'))
+            else:
+                signals.append(('RSI', 'NEUTRAL', 'Weak'))
+        except (TypeError, ValueError):
             signals.append(('RSI', 'NEUTRAL', 'Weak'))
     
     # Supertrend Signal
@@ -739,8 +767,26 @@ def main():
                 """)
         
         except Exception as e:
-            st.error(f"❌ Error loading data: {e}")
-            st.info("💡 Please check the symbol or try again later")
+            error_msg = str(e)
+            if "'<' not supported between instances of 'str' and 'int'" in error_msg:
+                st.error("❌ Data processing error: Invalid data format detected")
+                st.info("💡 This usually means there's an issue with the stock data. Try a different symbol or refresh the page.")
+            elif "No data found" in error_msg:
+                st.error(f"❌ No data available for {ticker}")
+                st.info("💡 Please check if the symbol is correct and try again.")
+            elif "Connection" in error_msg or "timeout" in error_msg.lower():
+                st.error("❌ Network connection issue")
+                st.info("💡 Please check your internet connection and try again.")
+            else:
+                st.error(f"❌ Error loading data: {error_msg}")
+                st.info("💡 Please check the symbol or try again later")
+            
+            # Show debug info in expander
+            with st.expander("🔧 Technical Details"):
+                st.code(f"Error Type: {type(e).__name__}")
+                st.code(f"Error Message: {error_msg}")
+                st.code(f"Symbol: {ticker}")
+                st.code(f"Period: {period}")
     
     with tab2:
         st.markdown("### 🗺️ Market Overview")
