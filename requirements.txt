@@ -32,6 +32,12 @@ quantlib>=1.31
 # News & Sentiment
 newsapi-python>=0.2.6
 vaderSentiment>=3.3.2
+# TradingView & Chart Analysis
+tradingview-ta>=3.3.0
+mplfinance>=0.12.9b7
 # Additional Utilities
 aiohttp>=3.8.0
 asyncio-throttle>=1.0.2
+# Seeking Alpha & Advanced Analysis
+selenium>=4.15.0
+webdriver-manager>=4.0.1

@@ -1,52 +1,97 @@
 """
-🚀 Ultimate AI Trading Signal Platform
-Professional-grade trading dashboard with advanced features
+🚀 ULTIMATE AI Trading Signal Platform
+The most powerful mobile-friendly trading dashboard with:
+- Live TradingView-style charts
+- Advanced pattern recognition  
+- Professional backtesting
+- Finviz market maps
+- Voice commands
+- Automated signal generation
 """
 
 import streamlit as st
-import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import pandas as pd
+import numpy as np
 import yfinance as yf
 from datetime import datetime, timedelta
-import requests
-from bs4 import BeautifulSoup
 import time
 
-# Import our advanced modules
+# Import our modules with fallbacks
 try:
     from src.indicators import TechnicalIndicators
     from src.patterns import PatternRecognizer
+    from src.backtesting import StrategyBacktester
     from src.finviz import FinvizAnalyzer
-    from src.backtesting import AdvancedBacktester, PortfolioBacktester
-    
     ADVANCED_FEATURES = True
 except ImportError:
-    # Fallback to basic implementation
+    st.warning("⚠️ Some advanced features unavailable. Using basic mode.")
     ADVANCED_FEATURES = False
     
+    # Basic fallback implementations
     class TechnicalIndicators:
-        @staticmethod
-        def calculate_rsi(data, period=14):
-            delta = data.diff()
+        def calculate_rsi(self, data, period=14):
+            delta = data['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
             rs = gain / loss
             rsi = 100 - (100 / (1 + rs))
-            return rsi
+            return {'RSI': rsi, 'Signal': 'HOLD'}
         
-        @staticmethod
-        def calculate_supertrend(data, period=10, multiplier=3):
-            high = data['High']
-            low = data['Low']
-            close = data['Close']
-            
+        def calculate_supertrend(self, data, period=10, multiplier=3):
+            high, low, close = data['High'], data['Low'], data['Close']
             tr1 = high - low
             tr2 = abs(high - close.shift())
             tr3 = abs(low - close.shift())
             tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
             atr = tr.rolling(period).mean()
+            hl2 = (high + low) / 2
+            upper_band = hl2 + (multiplier * atr)
+            lower_band = hl2 - (multiplier * atr)
+            
+            supertrend = pd.Series(index=data.index, dtype=float)
+            direction = pd.Series(index=data.index, dtype=int)
+            
+            for i in range(1, len(data)):
+                if close.iloc[i] <= lower_band.iloc[i]:
+                    supertrend.iloc[i] = lower_band.iloc[i]
+                    direction.iloc[i] = 1
+                elif close.iloc[i] >= upper_band.iloc[i]:
+                    supertrend.iloc[i] = upper_band.iloc[i]
+                    direction.iloc[i] = -1
+                else:
+                    supertrend.iloc[i] = supertrend.iloc[i-1]
+                    direction.iloc[i] = direction.iloc[i-1]
+            
+            signals = ['BUY' if d == 1 else 'SELL' if d == -1 else 'HOLD' for d in direction]
+            return {'Supertrend': supertrend, 'Signal': signals}
+        
+        def calculate_macd(self, data, fast=12, slow=26, signal=9):
+            close = data['Close']
+            exp1 = close.ewm(span=fast).mean()
+            exp2 = close.ewm(span=slow).mean()
+            macd = exp1 - exp2
+            signal_line = macd.ewm(span=signal).mean()
+            histogram = macd - signal_line
+            
+            trade_signals = []
+            for i in range(len(macd)):
+                if i == 0:
+                    trade_signals.append('HOLD')
+                elif macd.iloc[i] > signal_line.iloc[i] and macd.iloc[i-1] <= signal_line.iloc[i-1]:
+                    trade_signals.append('BUY')
+                elif macd.iloc[i] < signal_line.iloc[i] and macd.iloc[i-1] >= signal_line.iloc[i-1]:
+                    trade_signals.append('SELL')
+                else:
+                    trade_signals.append('HOLD')
+            
+            return {
+                'MACD': macd,
+                'Signal': signal_line,
+                'Histogram': histogram,
+                'Trade_Signal': trade_signals
+            }
             
             hl_avg = (high + low) / 2
             upper_band = hl_avg + (multiplier * atr)
