@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start AI Trading Dashboard",
+			"type": "shell",
+			"command": "streamlit run main.py --server.port 8501 --server.address localhost",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
