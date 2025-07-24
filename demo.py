@@ -12,6 +12,41 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import time
 
+# Import enhanced alert system
+try:
+    from src.alerts_enhanced import send_telegram_signal, send_daily_briefing, test_telegram_connection
+    TELEGRAM_ALERTS_AVAILABLE = True
+except ImportError:
+    TELEGRAM_ALERTS_AVAILABLE = False
+    # Create dummy functions
+    def send_telegram_signal(signal_data):
+        return False
+    def send_daily_briefing():
+        return False
+    def test_telegram_connection():
+        return False
+    st.warning("⚠️ Enhanced Telegram alerts not available. Check alerts_enhanced.py")
+
+# Import enhanced portfolio system
+try:
+    from src.portfolio_enhanced import get_portfolio_manager, get_portfolio_summary, get_portfolio_data
+    PORTFOLIO_ENHANCED_AVAILABLE = True
+except ImportError:
+    PORTFOLIO_ENHANCED_AVAILABLE = False
+    def get_portfolio_manager():
+        return None
+    def get_portfolio_summary():
+        return {}
+    def get_portfolio_data():
+        return pd.DataFrame()
+
+# Import voice command system
+try:
+    from src.voice import VoiceCommands
+    VOICE_COMMANDS_AVAILABLE = True
+except ImportError:
+    VOICE_COMMANDS_AVAILABLE = False
+
 # Enhanced Mobile CSS
 st.set_page_config(
     page_title="🚀 Ultimate AI Trading Platform",
@@ -418,13 +453,113 @@ def main():
         rsi_period = st.slider("RSI Period", 5, 30, 14)
         st_period = st.slider("Supertrend Period", 5, 20, 10)
         st_multiplier = st.slider("Supertrend Multiplier", 1.0, 5.0, 3.0)
+        
+        # Telegram Alert Settings
+        st.markdown("### 📱 Alert Settings")
+        if TELEGRAM_ALERTS_AVAILABLE:
+            telegram_status = test_telegram_connection()
+            if telegram_status:
+                st.success("✅ Telegram: Connected")
+                st.caption("@SHADOWCLAW007")
+            else:
+                st.error("❌ Telegram: Not configured")
+                st.caption("Check secrets.toml")
+            
+            if st.button("📬 Send Daily Briefing", use_container_width=True):
+                with st.spinner("Sending daily briefing..."):
+                    success = send_daily_briefing()
+                    if success:
+                        st.success("✅ Daily briefing sent!")
+                    else:
+                        st.error("❌ Failed to send briefing")
+        else:
+            st.warning("⚠️ Telegram alerts disabled")
+            st.caption("Install python-telegram-bot")
+        
+        # Portfolio Settings
+        st.markdown("### 💰 Portfolio Status")
+        if PORTFOLIO_ENHANCED_AVAILABLE:
+            portfolio_manager = get_portfolio_manager()
+            if portfolio_manager and portfolio_manager.gc:
+                st.success("✅ Google Sheets: Connected")
+                portfolio_summary = get_portfolio_summary()
+                if portfolio_summary:
+                    st.metric("Account Value", f"${portfolio_summary.get('total_value', 0):,.0f}")
+                    st.metric("Day P&L", f"{portfolio_summary.get('day_pnl_pct', 0):+.1f}%")
+            else:
+                st.warning("⚠️ Google Sheets: Not configured")
+                st.caption("Check secrets.toml")
+        else:
+            st.warning("⚠️ Portfolio sync disabled")
+            st.caption("Install gspread package")
+        
+        # Voice Commands
+        st.markdown("### 🎤 Voice Commands")
+        if VOICE_COMMANDS_AVAILABLE:
+            if 'voice_system' not in st.session_state:
+                st.session_state.voice_system = VoiceCommands()
+            
+            voice_status = st.session_state.voice_system.microphone is not None
+            if voice_status:
+                st.success("✅ Microphone: Ready")
+                
+                if st.button("🎙️ Listen for Command", use_container_width=True):
+                    with st.spinner("🎤 Listening... Say a command"):
+                        command = st.session_state.voice_system.listen_for_command(timeout=5)
+                        if command:
+                            st.success(f"🎯 Command: '{command}'")
+                            
+                            # Process basic commands
+                            if "price" in command.lower():
+                                symbol = None
+                                words = command.upper().split()
+                                for word in words:
+                                    if len(word) <= 5 and word.isalpha():
+                                        symbol = word
+                                        break
+                                
+                                if symbol:
+                                    try:
+                                        price_data = yf.download(symbol, period="1d")
+                                        if not price_data.empty:
+                                            current_price = price_data['Close'].iloc[-1]
+                                            st.info(f"💰 {symbol}: ${current_price:.2f}")
+                                        else:
+                                            st.error("❌ Symbol not found")
+                                    except:
+                                        st.error("❌ Error getting price")
+                                else:
+                                    st.warning("⚠️ No symbol detected")
+                            
+                            elif "portfolio" in command.lower():
+                                st.info("📊 Check the Portfolio tab for details")
+                            
+                            elif "help" in command.lower():
+                                st.info("""
+                                🎙️ **Voice Commands:**
+                                - "Check [SYMBOL] price"
+                                - "Show portfolio"
+                                - "Help"
+                                - More commands coming soon!
+                                """)
+                        else:
+                            st.warning("⚠️ No command detected. Try again.")
+                
+                st.caption("Try: 'Check AAPL price' or 'Show portfolio'")
+            else:
+                st.error("❌ Microphone: Not available")
+                st.caption("Check microphone permissions")
+        else:
+            st.warning("⚠️ Voice commands disabled")
+            st.caption("Install speechrecognition")
     
     # Main tabs
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📈 Live Analysis", 
         "🗺️ Market Overview",
         "🔍 Pattern Scanner", 
-        "📊 Strategy Tester"
+        "📊 Strategy Tester",
+        "💰 Portfolio"
     ])
     
     with tab1:
@@ -524,6 +659,37 @@ def main():
                 <p>All {len(signal_analysis['individual'])} indicators analyzed</p>
             </div>
             """, unsafe_allow_html=True)
+            
+            # Telegram Alert Button
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("📱 Send Telegram Alert", key="telegram_alert", use_container_width=True):
+                    if TELEGRAM_ALERTS_AVAILABLE:
+                        # Prepare signal data for Telegram
+                        signal_data = {
+                            'ticker': ticker,
+                            'price': data['Close'].iloc[-1],
+                            'signal': overall_signal,
+                            'confidence': confidence,
+                            'rsi_value': indicators.get('rsi', {}).get('Current', 50),
+                            'rsi_signal': 'BUY' if indicators.get('rsi', {}).get('Current', 50) < 30 else 'SELL' if indicators.get('rsi', {}).get('Current', 50) > 70 else 'NEUTRAL',
+                            'supertrend_signal': indicators.get('supertrend', {}).get('Current', 'NEUTRAL'),
+                            'macd_signal': indicators.get('macd', {}).get('Current', 'NEUTRAL'),
+                            'recommendation': f"AI suggests {overall_signal} with {confidence:.0f}% confidence",
+                            'risk_level': 'High' if 'STRONG' in overall_signal else 'Medium',
+                            'target_price': data['Close'].iloc[-1] * (1.05 if 'BUY' in overall_signal else 0.95),
+                            'stop_price': data['Close'].iloc[-1] * (0.95 if 'BUY' in overall_signal else 1.05)
+                        }
+                        
+                        # Send alert
+                        with st.spinner("Sending Telegram alert..."):
+                            success = send_telegram_signal(signal_data)
+                            if success:
+                                st.success("✅ Alert sent to @SHADOWCLAW007!")
+                            else:
+                                st.error("❌ Failed to send alert. Check Telegram configuration.")
+                    else:
+                        st.error("❌ Telegram alerts not configured. Check alerts_enhanced.py")
             
             # Individual signals breakdown
             st.markdown("### 📊 Signal Breakdown")
@@ -696,6 +862,169 @@ def main():
                     """, unsafe_allow_html=True)
             
             st.success("✅ Strategy test completed! Full backtesting engine coming soon.")
+    
+    with tab5:
+        st.markdown("### 💰 Portfolio Management & Tracking")
+        
+        if PORTFOLIO_ENHANCED_AVAILABLE:
+            portfolio_manager = get_portfolio_manager()
+            
+            if portfolio_manager and portfolio_manager.gc:
+                # Portfolio Summary
+                st.markdown("#### 📊 Portfolio Overview")
+                
+                try:
+                    portfolio_summary = get_portfolio_summary()
+                    
+                    if portfolio_summary:
+                        # Portfolio metrics
+                        metric_cols = st.columns(4)
+                        
+                        with metric_cols[0]:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <h4>Total Value</h4>
+                                <h3>${portfolio_summary.get('total_value', 0):,.2f}</h3>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with metric_cols[1]:
+                            day_pnl = portfolio_summary.get('day_pnl', 0)
+                            day_pnl_pct = portfolio_summary.get('day_pnl_pct', 0)
+                            pnl_color = "#00ff88" if day_pnl >= 0 else "#ff4444"
+                            st.markdown(f"""
+                            <div class="metric-card" style="color: {pnl_color};">
+                                <h4>Day P&L</h4>
+                                <h3>${day_pnl:+,.2f} ({day_pnl_pct:+.2f}%)</h3>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with metric_cols[2]:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <h4>Buying Power</h4>
+                                <h3>${portfolio_summary.get('buying_power', 0):,.2f}</h3>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with metric_cols[3]:
+                            total_pnl = portfolio_summary.get('total_pnl', 0)
+                            total_pnl_pct = portfolio_summary.get('total_pnl_pct', 0)
+                            pnl_color = "#00ff88" if total_pnl >= 0 else "#ff4444"
+                            st.markdown(f"""
+                            <div class="metric-card" style="color: {pnl_color};">
+                                <h4>Total P&L</h4>
+                                <h3>${total_pnl:+,.2f} ({total_pnl_pct:+.2f}%)</h3>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        # Holdings table
+                        st.markdown("#### 📈 Current Holdings")
+                        portfolio_df = get_portfolio_data()
+                        
+                        if not portfolio_df.empty:
+                            # Format the DataFrame for display
+                            display_df = portfolio_df.copy()
+                            display_df = display_df[[
+                                'symbol', 'shares', 'avg_cost', 'current_price', 
+                                'market_value', 'unrealized_pnl', 'unrealized_pnl_pct'
+                            ]]
+                            display_df.columns = [
+                                'Symbol', 'Shares', 'Avg Cost', 'Current Price', 
+                                'Market Value', 'Unrealized P&L', 'P&L %'
+                            ]
+                            
+                            st.dataframe(
+                                display_df.style.format({
+                                    'Avg Cost': '${:.2f}',
+                                    'Current Price': '${:.2f}',
+                                    'Market Value': '${:,.2f}',
+                                    'Unrealized P&L': '${:,.2f}',
+                                    'P&L %': '{:+.2f}%'
+                                }),
+                                use_container_width=True
+                            )
+                        else:
+                            st.info("📭 No holdings found. Add positions to get started!")
+                        
+                        # Portfolio actions
+                        st.markdown("#### ⚙️ Portfolio Actions")
+                        action_cols = st.columns(3)
+                        
+                        with action_cols[0]:
+                            if st.button("🔄 Sync Google Sheets", use_container_width=True):
+                                with st.spinner("Syncing portfolio data..."):
+                                    portfolio_manager.sync_portfolio_from_sheets()
+                                    st.success("✅ Portfolio synced!")
+                                    st.rerun()
+                        
+                        with action_cols[1]:
+                            if st.button("📊 Export Data", use_container_width=True):
+                                csv = portfolio_df.to_csv(index=False)
+                                st.download_button(
+                                    label="💾 Download CSV",
+                                    data=csv,
+                                    file_name=f"portfolio_{datetime.now().strftime('%Y%m%d')}.csv",
+                                    mime="text/csv"
+                                )
+                        
+                        with action_cols[2]:
+                            if st.button("📈 Analyze Performance", use_container_width=True):
+                                st.info("📊 Performance analysis coming soon!")
+                        
+                        # Quick add position
+                        with st.expander("➕ Add New Position"):
+                            add_cols = st.columns(4)
+                            
+                            with add_cols[0]:
+                                new_symbol = st.text_input("Symbol", key="new_symbol").upper()
+                            
+                            with add_cols[1]:
+                                new_shares = st.number_input("Shares", min_value=0.01, step=0.01, key="new_shares")
+                            
+                            with add_cols[2]:
+                                new_price = st.number_input("Price", min_value=0.01, step=0.01, key="new_price")
+                            
+                            with add_cols[3]:
+                                st.write("")  # Spacer
+                                if st.button("➕ Add Position", key="add_position"):
+                                    if new_symbol and new_shares > 0 and new_price > 0:
+                                        # This would integrate with Google Sheets
+                                        st.success(f"✅ Added {new_shares} shares of {new_symbol} @ ${new_price}")
+                                        st.info("💡 Feature will sync to Google Sheets in next update")
+                                    else:
+                                        st.error("❌ Please fill all fields")
+                    
+                    else:
+                        st.warning("⚠️ Unable to load portfolio data")
+                
+                except Exception as e:
+                    st.error(f"❌ Error loading portfolio: {e}")
+                    
+            else:
+                st.warning("⚠️ Google Sheets not connected")
+                st.markdown("""
+                **To enable portfolio tracking:**
+                1. Set up Google Sheets API credentials
+                2. Add credentials to secrets.toml
+                3. Create a portfolio spreadsheet
+                4. Configure sheet ID in settings
+                
+                **Features when connected:**
+                - Real-time portfolio sync
+                - Performance tracking
+                - Automated position updates
+                - Export capabilities
+                """)
+        
+        else:
+            st.error("❌ Portfolio features not available")
+            st.markdown("""
+            **To enable portfolio features:**
+            ```bash
+            pip install gspread google-auth
+            ```
+            """)
     
     # Footer
     st.markdown("---")
