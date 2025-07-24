@@ -1,7 +1,7 @@
 import speech_recognition as sr
 import threading
 import time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import re
 import logging
 

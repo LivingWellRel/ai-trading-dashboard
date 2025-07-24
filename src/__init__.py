@@ -9,7 +9,7 @@ __description__ = "Mobile-friendly AI trading dashboard with live technical indi
 from .indicators import TechnicalIndicators
 from .portfolio import PortfolioManager
 from .alerts import AlertManager
-from .voice import VoiceCommands
+# from .voice import VoiceCommands  # Commented out to avoid import issues
 from .config import Config
 from .utils import (
     get_market_data,
@@ -24,7 +24,7 @@ __all__ = [
     'TechnicalIndicators',
     'PortfolioManager', 
     'AlertManager',
-    'VoiceCommands',
+    # 'VoiceCommands',  # Commented out to avoid import issues
     'Config',
     'get_market_data',
     'get_current_price',

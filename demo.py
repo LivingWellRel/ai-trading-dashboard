@@ -16,7 +16,7 @@ import time
 try:
     from src.alerts_enhanced import send_telegram_signal, send_daily_briefing, test_telegram_connection
     TELEGRAM_ALERTS_AVAILABLE = True
-except ImportError:
+except (ImportError, Exception) as e:
     TELEGRAM_ALERTS_AVAILABLE = False
     # Create dummy functions
     def send_telegram_signal(signal_data):
@@ -25,13 +25,12 @@ except ImportError:
         return False
     def test_telegram_connection():
         return False
-    st.warning("⚠️ Enhanced Telegram alerts not available. Check alerts_enhanced.py")
 
 # Import enhanced portfolio system
 try:
     from src.portfolio_enhanced import get_portfolio_manager, get_portfolio_summary, get_portfolio_data
     PORTFOLIO_ENHANCED_AVAILABLE = True
-except ImportError:
+except (ImportError, Exception) as e:
     PORTFOLIO_ENHANCED_AVAILABLE = False
     def get_portfolio_manager():
         return None
@@ -44,7 +43,7 @@ except ImportError:
 try:
     from src.voice import VoiceCommands
     VOICE_COMMANDS_AVAILABLE = True
-except ImportError:
+except (ImportError, Exception) as e:
     VOICE_COMMANDS_AVAILABLE = False
 
 # Enhanced Mobile CSS
