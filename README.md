@@ -1,8 +1,10 @@
-# AI Trading Dashboard
+# 🚀 AI Trading Dashboard
+
+**Live Demo**: Coming soon on Streamlit Cloud!
 
 A comprehensive mobile-friendly AI trading dashboard with live technical indicators, portfolio management, and automated alerts.
 
-## Features
+## ✨ Features
 
 ### 📊 Live Technical Indicators
 - **RSI (Relative Strength Index)**: Momentum oscillator for overbought/oversold conditions
@@ -19,64 +21,77 @@ A comprehensive mobile-friendly AI trading dashboard with live technical indicat
 - Roth IRA dip buy triggers
 
 ### 📲 Telegram & Push Alerts
-- Daily alerts at 9:25 AM EST
+- Daily alerts at 9:25 AM EST to @SHADOWCLAW007
 - Trade Now buttons for instant actions
 - Optional Twilio SMS/voice alerts
 - Custom alert conditions
 
 ### 🎤 Voice Commands
-- Voice-to-text trading commands
+- Voice-to-text trading commands ("Buy PLTR now", "Check portfolio")
 - Instant buy/sell voice triggers
 - Trade logging via voice
 - Mobile-optimized interface
 
-### 🖥 Streamlit Dashboard
-- Mobile-responsive design
-- Dark mode support
-- Multiple tabs: Charts, Logs, ROI, Watchlist, Roth IRA
-- Real-time data streaming
+### � Mobile-First Design
+- **Responsive design** works on all devices
+- **Touch-friendly** buttons and interface
+- **Add to home screen** for app-like experience
+- **Dark mode** support
 
-## Installation
+## 🚀 Quick Start
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Set up environment variables in `.env` file
-4. Configure Google Sheets API credentials
-5. Set up Telegram bot token
-6. Run the application:
-   ```bash
-   streamlit run main.py
-   ```
+### Run Locally
+```bash
+pip install -r requirements.txt
+streamlit run demo.py
+```
 
-## Configuration
+### Deploy to Streamlit Cloud (FREE)
+1. Push to GitHub
+2. Go to [share.streamlit.io](https://share.streamlit.io)
+3. Connect your GitHub repo
+4. Deploy `demo.py` as main file
+5. **Your app**: `https://your-repo-name.streamlit.app`
 
-Create a `.env` file with the following variables:
-- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token
-- `TELEGRAM_USERNAME`: Your Telegram username (@SHADOWCLAW007)
-- `TWILIO_ACCOUNT_SID`: Twilio account SID (optional)
-- `TWILIO_AUTH_TOKEN`: Twilio auth token (optional)
-- `GOOGLE_SHEETS_CREDENTIALS`: Path to Google Sheets credentials JSON
+## 📱 Mobile Access
+- Works on **any device** with internet
+- **Responsive design** adapts to screen size
+- **PWA capabilities** - add to home screen
+- **Touch-optimized** for mobile trading
 
-## Usage
+## 🎯 Trading Signals
 
-1. **Live Charts**: Monitor real-time technical indicators
-2. **Portfolio**: Track holdings and performance via Google Sheets
-3. **Alerts**: Receive automated trading signals
-4. **Voice Commands**: Use voice for quick trading actions
-5. **Mobile Access**: Full functionality on mobile devices
+**Strong Buy Signal** (3/3 indicators):
+- ✅ RSI: 30-40 (oversold recovery zone)
+- ✅ Supertrend: Green (confirmed uptrend)
+- ✅ MACD: Above signal line (bullish momentum)
 
-## Tech Stack
+## 🔧 Configuration
 
-- **Frontend**: Streamlit with mobile-responsive design
-- **Data**: yfinance, TA-Lib for technical analysis
+Create `.env` file:
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_USERNAME=@SHADOWCLAW007
+GOOGLE_SHEETS_ID=your_sheet_id
+ALERT_TIME=09:25
+TIMEZONE=US/Eastern
+```
+
+## 🏗️ Tech Stack
+- **Frontend**: Streamlit with mobile-responsive CSS
+- **Data**: yfinance, pandas, numpy
+- **Charts**: Plotly (mobile-optimized)
 - **Alerts**: Telegram Bot API, Twilio
 - **Storage**: Google Sheets API
-- **Voice**: SpeechRecognition, PyAudio
-- **Charts**: Plotly for interactive visualizations
+- **Voice**: SpeechRecognition
+- **Deployment**: Streamlit Cloud, Railway, Heroku
 
-## License
+## 📊 Live Features
+- Real-time market simulation
+- Interactive charts and indicators
+- Portfolio tracking and analysis
+- Voice command interface
+- Mobile-responsive design
 
-MIT License
+---
+**🎊 Ready to deploy! Your mobile AI trading dashboard awaits!** 📱📈
